@@ -1,0 +1,4 @@
+export const CONFIG = {
+  CLOUDINARY_CLOUD_NAME: "",
+  CLOUDINARY_UPLOAD_PRESET: ""
+};

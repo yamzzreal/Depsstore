@@ -1,0 +1,3 @@
+import {getDB} from "./jsonbin.js";
+const id=new URLSearchParams(location.search).get("product"); if(id)document.querySelector("#trxId").value=id;
+document.querySelector("#check").onclick=async()=>{const key=document.querySelector("#trxId").value.trim(),out=document.querySelector("#result");if(!key){out.innerHTML='<div class="status">Masukkan ID transaksi.</div>';return}try{const db=await getDB(),t=(db.transactions||[]).find(x=>x.id===key);out.innerHTML=t?`<div class="status"><b>${t.id}</b><br>Produk: ${t.productName||"-"}<br>Status: ${t.status||"pending"}</div>`:'<div class="status">Transaksi tidak ditemukan.</div>'}catch(e){out.innerHTML=`<div class="status">${e.message}</div>`}};
