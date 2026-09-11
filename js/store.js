@@ -1,14 +1,15 @@
 import { getDB } from "./jsonbin.js";
 
 /* =========================================
-   DEPS STORE - PRODUCT STORE
+   DEPS STORE - PUBLIC PRODUCT STORE
    ========================================= */
 
-/* Helper selector */
+/* Selector helper */
 const $ = (selector) => document.querySelector(selector);
 
+
 /* =========================================
-   FORMAT MONEY
+   FORMAT RUPIAH
    ========================================= */
 
 const money = (n) => {
@@ -18,6 +19,7 @@ const money = (n) => {
         maximumFractionDigits: 0
     }).format(Number(n) || 0);
 };
+
 
 /* =========================================
    ESCAPE HTML
@@ -32,37 +34,149 @@ function escapeHTML(value) {
         .replace(/'/g, "&#039;");
 }
 
+
+/* =========================================
+   WHATSAPP
+   ========================================= */
+
+function buyViaWhatsApp(product) {
+
+    const settings =
+        window.DEPS_SETTINGS || {};
+
+    let whatsapp =
+        settings.whatsapp || "";
+
+    /* Ambil angka saja */
+    whatsapp =
+        String(whatsapp).replace(/\D/g, "");
+
+
+    /* 08xxxx -> 628xxxx */
+    if (whatsapp.startsWith("08")) {
+        whatsapp =
+            "62" + whatsapp.substring(1);
+    }
+
+
+    /* Nomor belum diatur */
+    if (!whatsapp) {
+
+        alert(
+            "WhatsApp admin belum diatur.\n\n" +
+            "Silakan buka Dashboard Admin → " +
+            "Setting Website → WhatsApp CS."
+        );
+
+        return;
+    }
+
+
+    /* Data produk */
+    const productName =
+        product?.name || "Produk";
+
+    const productPrice =
+        money(product?.price);
+
+    const productStock =
+        Number(product?.stock) || 0;
+
+    const productId =
+        product?.id || "-";
+
+
+    /* Pesan WhatsApp */
+    const message =
+`Halo DEPS STORE 👋
+
+Saya ingin membeli produk:
+
+📦 Produk: ${productName}
+💰 Harga: ${productPrice}
+📦 Stok: ${productStock}
+🆔 ID Produk: ${productId}
+
+Mohon info proses pembeliannya.
+
+Terima kasih 🙏`;
+
+
+    /* URL WhatsApp */
+    const url =
+        `https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`;
+
+
+    /* Buka WhatsApp */
+    window.location.href = url;
+}
+
+
+/* Jadikan global karena dipanggil dari onclick HTML */
+window.buyViaWhatsApp =
+    buyViaWhatsApp;
+
+
 /* =========================================
    PRODUCT CARD
    ========================================= */
 
-function card(p) {
+function card(product) {
 
-    const id = encodeURIComponent(p?.id || "");
-    const name = escapeHTML(p?.name || "Produk");
-    const image = escapeHTML(p?.image || "");
-    const category = escapeHTML(p?.category || "Lainnya");
-    const description = escapeHTML(
-        p?.description ||
-        "Produk digital berkualitas dari DEPS STORE."
-    );
+    const id =
+        encodeURIComponent(
+            product?.id || ""
+        );
 
-    const price = money(p?.price);
 
-    const stockNumber = Number(p?.stock) || 0;
+    const name =
+        escapeHTML(
+            product?.name || "Produk"
+        );
 
-    const stockHTML = stockNumber > 0
-        ? `● Stok ${stockNumber}`
-        : `● Habis`;
 
+    const image =
+        escapeHTML(
+            product?.image || ""
+        );
+
+
+    const category =
+        escapeHTML(
+            product?.category || "Lainnya"
+        );
+
+
+    const description =
+        escapeHTML(
+            product?.description ||
+            "Produk digital berkualitas dari DEPS STORE."
+        );
+
+
+    const price =
+        money(product?.price);
+
+
+    const stock =
+        Number(product?.stock) || 0;
+
+
+    /* Gambar */
     const imageHTML = image
+
         ? `
             <img
                 src="${image}"
                 alt="${name}"
                 loading="lazy"
-                onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+                onerror="
+                    this.style.display='none';
+                    if(this.nextElementSibling)
+                        this.nextElementSibling.style.display='flex';
+                "
             >
+
             <span
                 class="material-symbols-outlined placeholder"
                 style="display:none;"
@@ -70,11 +184,32 @@ function card(p) {
                 inventory_2
             </span>
         `
+
         : `
-            <span class="material-symbols-outlined placeholder">
+            <span
+                class="material-symbols-outlined placeholder"
+            >
                 inventory_2
             </span>
         `;
+
+
+    /* Stock */
+    const stockHTML =
+        stock > 0
+
+            ? `
+                <span>
+                    ● Stok ${stock}
+                </span>
+            `
+
+            : `
+                <span>
+                    ● Habis
+                </span>
+            `;
+
 
     return `
         <article class="card">
@@ -83,19 +218,23 @@ function card(p) {
                 ${imageHTML}
             </div>
 
+
             <div class="info">
 
                 <div class="cat">
                     ${category}
                 </div>
 
+
                 <div class="name">
                     ${name}
                 </div>
 
+
                 <div class="desc">
                     ${description}
                 </div>
+
 
                 <div class="bottom">
 
@@ -105,21 +244,30 @@ function card(p) {
                             ${price}
                         </div>
 
+
                         <div class="stock">
                             ${stockHTML}
                         </div>
 
                     </div>
 
+
                     <button
                         class="btn"
                         type="button"
-                        onclick="location.href='transaksi.html?product=${id}'"
-                        ${stockNumber <= 0 ? "disabled" : ""}
+                        onclick="buyViaWhatsApp(${JSON.stringify(product).replace(/"/g, '&quot;')})"
+                        ${stock <= 0 ? "disabled" : ""}
+                        title="${
+                            stock > 0
+                                ? "Beli via WhatsApp"
+                                : "Stok habis"
+                        }"
                     >
+
                         <span class="material-symbols-outlined">
                             shopping_cart
                         </span>
+
                     </button>
 
                 </div>
@@ -130,13 +278,16 @@ function card(p) {
     `;
 }
 
+
 /* =========================================
-   RENDER FOOTER
+   FOOTER
    ========================================= */
 
 function renderFooter(db) {
 
-    const settings = db?.settings || {};
+    const settings =
+        db?.settings || {};
+
 
     /* -------------------------------------
        STORE DESCRIPTION
@@ -146,41 +297,72 @@ function renderFooter(db) {
         settings.storeDescription ||
         "Store digital dengan produk berkualitas dan pengalaman belanja yang sederhana.";
 
+
     const aboutUs =
         settings.aboutUs ||
         "DEPS STORE menyediakan berbagai produk digital untuk kebutuhan kamu.";
 
-    const aboutText = $("#aboutText");
-    const footerAbout = $("#footerAbout");
+
+    const aboutText =
+        $("#aboutText");
+
+
+    const footerAbout =
+        $("#footerAbout");
+
 
     if (aboutText) {
-        aboutText.textContent = storeDescription;
+
+        aboutText.textContent =
+            storeDescription;
     }
 
+
     if (footerAbout) {
-        footerAbout.textContent = aboutUs;
+
+        footerAbout.textContent =
+            aboutUs;
     }
+
 
     /* -------------------------------------
        WHATSAPP
        ------------------------------------- */
 
-    const waLink = $("#waLink");
-    const waText = $("#waText");
+    const waLink =
+        $("#waLink");
 
-    if (waLink && settings.whatsapp) {
 
-        let whatsapp = String(settings.whatsapp)
-            .replace(/\D/g, "");
+    const waText =
+        $("#waText");
 
-        /* Indonesia 08xxxx -> 628xxxx */
-        if (whatsapp.startsWith("08")) {
-            whatsapp = "62" + whatsapp.substring(1);
+
+    if (
+        waLink &&
+        settings.whatsapp
+    ) {
+
+        let whatsapp =
+            String(settings.whatsapp)
+                .replace(/\D/g, "");
+
+
+        if (
+            whatsapp.startsWith("08")
+        ) {
+
+            whatsapp =
+                "62" +
+                whatsapp.substring(1);
         }
 
-        waLink.href = `https://wa.me/${whatsapp}`;
+
+        waLink.href =
+            `https://wa.me/${whatsapp}`;
+
 
         if (waText) {
+
             waText.textContent =
                 settings.whatsappLabel ||
                 "Chat WhatsApp";
@@ -189,49 +371,67 @@ function renderFooter(db) {
     } else {
 
         if (waLink) {
-            waLink.removeAttribute("href");
+
+            waLink.removeAttribute(
+                "href"
+            );
         }
 
+
         if (waText) {
+
             waText.textContent =
                 "WhatsApp CS belum diatur";
         }
     }
 
+
     /* -------------------------------------
        SOCIAL MEDIA
        ------------------------------------- */
 
-    const socials = $("#socials");
+    const socials =
+        $("#socials");
+
 
     if (!socials) return;
 
+
     const socialList = [
+
         {
             key: "instagram",
             name: "Instagram",
             icon: "photo_camera"
         },
+
         {
             key: "telegram",
             name: "Telegram",
             icon: "send"
         },
+
         {
             key: "tiktok",
             name: "TikTok",
             icon: "music_note"
         },
+
         {
             key: "youtube",
             name: "YouTube",
             icon: "play_circle"
         }
+
     ];
 
-    const activeSocials = socialList.filter(
-        item => settings[item.key]
-    );
+
+    const activeSocials =
+        socialList.filter(
+            item =>
+                settings[item.key]
+        );
+
 
     if (!activeSocials.length) {
 
@@ -244,32 +444,41 @@ function renderFooter(db) {
         return;
     }
 
-    socials.innerHTML = activeSocials
-        .map(item => {
 
-            const url = escapeHTML(
-                settings[item.key]
-            );
+    socials.innerHTML =
+        activeSocials
+            .map(item => {
 
-            return `
-                <a
-                    class="social"
-                    href="${url}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    <span class="material-symbols-outlined">
-                        ${item.icon}
-                    </span>
+                const url =
+                    escapeHTML(
+                        settings[item.key]
+                    );
 
-                    <small>
-                        ${item.name}
-                    </small>
-                </a>
-            `;
-        })
-        .join("");
+
+                return `
+                    <a
+                        class="social"
+                        href="${url}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+
+                        <span
+                            class="material-symbols-outlined"
+                        >
+                            ${item.icon}
+                        </span>
+
+                        <small>
+                            ${item.name}
+                        </small>
+
+                    </a>
+                `;
+            })
+            .join("");
 }
+
 
 /* =========================================
    RENDER PRODUCTS
@@ -277,14 +486,19 @@ function renderFooter(db) {
 
 async function render() {
 
-    const grid = $("#productGrid");
+    const grid =
+        $("#productGrid");
+
 
     if (!grid) {
+
         console.warn(
             "DEPS STORE: #productGrid tidak ditemukan."
         );
+
         return;
     }
+
 
     /* Loading */
     grid.innerHTML = `
@@ -293,18 +507,30 @@ async function render() {
         </div>
     `;
 
+
     try {
 
         /* ---------------------------------
-           AMBIL DATABASE DARI JSONBIN
+           GET DATABASE
            --------------------------------- */
 
-        const db = await getDB();
+        const db =
+            await getDB();
+
 
         console.log(
             "DEPS STORE database:",
             db
         );
+
+
+        /* ---------------------------------
+           SIMPAN SETTINGS GLOBAL
+           --------------------------------- */
+
+        window.DEPS_SETTINGS =
+            db?.settings || {};
+
 
         /* ---------------------------------
            FOOTER
@@ -312,67 +538,96 @@ async function render() {
 
         renderFooter(db);
 
+
         /* ---------------------------------
            PRODUCTS
            --------------------------------- */
 
-        let products = Array.isArray(db?.products)
-            ? db.products
-            : [];
+        let products =
+            Array.isArray(db?.products)
+
+                ? db.products
+
+                : [];
+
 
         /* ---------------------------------
            SEARCH
            --------------------------------- */
 
-        const searchInput = $("#search");
+        const searchInput =
+            $("#search");
 
-        const query = (
-            searchInput?.value || ""
-        )
-            .trim()
-            .toLowerCase();
+
+        const query =
+            (
+                searchInput?.value ||
+                ""
+            )
+                .trim()
+                .toLowerCase();
+
 
         /* ---------------------------------
            CATEGORY
            --------------------------------- */
 
-        const categorySelect = $("#category");
+        const categorySelect =
+            $("#category");
+
 
         const selectedCategory =
-            categorySelect?.value || "";
+            categorySelect?.value ||
+            "";
+
 
         /* ---------------------------------
            FILTER
            --------------------------------- */
 
-        products = products.filter(product => {
+        products =
+            products.filter(product => {
 
-            const searchText = `
-                ${product?.name || ""}
-                ${product?.description || ""}
-                ${product?.category || ""}
-            `.toLowerCase();
+                const searchText = `
+                    ${product?.name || ""}
+                    ${product?.description || ""}
+                    ${product?.category || ""}
+                `
+                    .toLowerCase();
 
-            const matchSearch =
-                !query ||
-                searchText.includes(query);
 
-            const matchCategory =
-                !selectedCategory ||
-                product?.category === selectedCategory;
+                const matchSearch =
+                    !query ||
+                    searchText.includes(
+                        query
+                    );
 
-            return matchSearch && matchCategory;
-        });
+
+                const matchCategory =
+                    !selectedCategory ||
+                    product?.category ===
+                        selectedCategory;
+
+
+                return (
+                    matchSearch &&
+                    matchCategory
+                );
+            });
+
 
         /* ---------------------------------
-           RENDER PRODUCT
+           DISPLAY PRODUCTS
            --------------------------------- */
 
         if (products.length) {
 
-            grid.innerHTML = products
-                .map(product => card(product))
-                .join("");
+            grid.innerHTML =
+                products
+                    .map(product =>
+                        card(product)
+                    )
+                    .join("");
 
         } else {
 
@@ -386,20 +641,24 @@ async function render() {
                         inventory_2
                     </span>
 
-                    <div style="margin-top:10px;">
+                    <div
+                        style="margin-top:10px;"
+                    >
                         Belum ada produk.
                     </div>
 
                     <small>
-                        Tambahkan produk dari dashboard admin.
+                        Tambahkan produk
+                        dari dashboard admin.
                     </small>
 
                 </div>
             `;
         }
 
+
         /* ---------------------------------
-           LOAD CATEGORY
+           LOAD CATEGORIES
            --------------------------------- */
 
         if (
@@ -407,29 +666,47 @@ async function render() {
             !categorySelect.dataset.loaded
         ) {
 
-            const categories = Array.isArray(
-                db?.categories
-            )
-                ? db.categories
-                : [];
+            const categories =
+                Array.isArray(
+                    db?.categories
+                )
 
-            categories.forEach(category => {
+                    ? db.categories
 
-                if (!category) return;
+                    : [];
 
-                const value =
-                    escapeHTML(category);
 
-                categorySelect.insertAdjacentHTML(
-                    "beforeend",
-                    `<option value="${value}">
-                        ${value}
-                    </option>`
-                );
-            });
+            categories.forEach(
+                category => {
 
-            categorySelect.dataset.loaded = "1";
+                    if (!category) return;
+
+
+                    const value =
+                        escapeHTML(
+                            category
+                        );
+
+
+                    categorySelect
+                        .insertAdjacentHTML(
+                            "beforeend",
+                            `
+                                <option
+                                    value="${value}"
+                                >
+                                    ${value}
+                                </option>
+                            `
+                        );
+                }
+            );
+
+
+            categorySelect.dataset.loaded =
+                "1";
         }
+
 
     } catch (error) {
 
@@ -437,6 +714,7 @@ async function render() {
             "DEPS STORE JSONBin:",
             error
         );
+
 
         grid.innerHTML = `
             <div class="empty">
@@ -448,9 +726,13 @@ async function render() {
                     error
                 </span>
 
-                <div style="margin-top:10px;">
+
+                <div
+                    style="margin-top:10px;"
+                >
                     Gagal memuat produk
                 </div>
+
 
                 <small>
                     ${escapeHTML(
@@ -464,11 +746,14 @@ async function render() {
     }
 }
 
+
 /* =========================================
-   SEARCH
+   SEARCH EVENT
    ========================================= */
 
-const searchInput = $("#search");
+const searchInput =
+    $("#search");
+
 
 if (searchInput) {
 
@@ -478,11 +763,14 @@ if (searchInput) {
     );
 }
 
+
 /* =========================================
-   CATEGORY FILTER
+   CATEGORY EVENT
    ========================================= */
 
-const categorySelect = $("#category");
+const categorySelect =
+    $("#category");
+
 
 if (categorySelect) {
 
@@ -491,6 +779,7 @@ if (categorySelect) {
         render
     );
 }
+
 
 /* =========================================
    INITIAL LOAD
